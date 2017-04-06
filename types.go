@@ -6,6 +6,9 @@ import "net"
 type Source interface {
 	// IP returns IPv4/IPv6 address in a non-error case
 	// net.IP should never be <nil> when error is <nil>
+	// NOTE: it is important that IP doesn't block indefinitely,
+	//   as the entire Consensus Logic will be blocked indefinitely as well
+	//   if this happens.
 	IP() (net.IP, error)
 }
 

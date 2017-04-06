@@ -115,28 +115,25 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	// start all source Requests on a seperate goroutine
 	for _, v := range c.voters {
 		go func(v voter) {
-			ip, err := v.source.IP()
-			if err == nil && ip == nil {
-				err = InvalidIPError("")
-			}
-			ch <- vote{
-				IP:    ip,
+			vote := vote{
 				Count: v.weight,
-				Error: err,
+				Error: InvalidIPError(""),
+			}
+			defer func() {
+				ch <- vote
+			}()
+			vote.IP, vote.Error = v.source.IP()
+			if vote.Error == nil && vote.IP == nil {
+				vote.Error = InvalidIPError("")
 			}
 		}(v)
 	}
 
 	// Wait for all votes to come in
-	var count int
-	for count < len(c.voters) {
-		select {
-		case vote := <-ch:
-			count++
-			if vote.Error == nil {
-				voteCollection[vote.IP.String()] += vote.Count
-				continue
-			}
+	for range c.voters {
+		vote := <-ch
+		if vote.Error == nil {
+			voteCollection[vote.IP.String()] += vote.Count
 		}
 	}
 
