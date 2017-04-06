@@ -3,6 +3,5 @@
 TODO:
 
 + Decent Logging;
-+ Comments;
++ README Documentation;
 + Unit-Tests;
-+ Iteration & Improved Design;
