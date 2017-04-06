@@ -5,26 +5,21 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // NewHTTPSource creates a HTTP Source object,
 // which can be used to request the (external) IP from.
 // The Default HTTP Client will be used if no client is given.
-func NewHTTPSource(client *http.Client, url string) *HTTPSource {
-	if client == nil {
-		client = http.DefaultClient
-	}
-
+func NewHTTPSource(url string) *HTTPSource {
 	return &HTTPSource{
-		client: client,
-		url:    url,
+		url: url,
 	}
 }
 
 // HTTPSource is the default source, to get the external IP from.
 // It does so by requesting the IP from a URL, via an HTTP GET Request.
 type HTTPSource struct {
-	client *http.Client
 	url    string
 	parser ContentParser
 }
@@ -42,7 +37,7 @@ func (s *HTTPSource) WithParser(parser ContentParser) *HTTPSource {
 }
 
 // IP implements Source.IP
-func (s *HTTPSource) IP() (net.IP, error) {
+func (s *HTTPSource) IP(timeout time.Duration) (net.IP, error) {
 	// Define the GET method with the correct url,
 	// setting the User-Agent to our library
 	req, err := http.NewRequest("GET", s.url, nil)
@@ -51,8 +46,9 @@ func (s *HTTPSource) IP() (net.IP, error) {
 	}
 	req.Header.Set("User-Agent", "go-external-ip (github.com/glendc/go-external-ip)")
 
+	client := &http.Client{Timeout: timeout}
 	// Do the request and read the body for non-error results.
-	resp, err := s.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

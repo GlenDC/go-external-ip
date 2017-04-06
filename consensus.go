@@ -1,17 +1,18 @@
 package externalip
 
 import (
+	"fmt"
 	"net"
-	"net/http"
+	"sync"
 	"time"
 )
 
 // DefaultConsensusConfig returns the ConsensusConfig,
 // with the default values:
-//    + Timeout: 5 seconds;
+//    + Timeout: 30 seconds;
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
-		Timeout: time.Second * 5,
+		Timeout: time.Second * 30,
 	}
 }
 
@@ -23,18 +24,18 @@ func DefaultConsensus(cfg *ConsensusConfig) *Consensus {
 	consensus := NewConsensus(cfg)
 
 	// TLS-protected providers
-	consensus.AddHTTPVoter("https://icanhazip.com/", 3)
-	consensus.AddHTTPVoter("https://myexternalip.com/raw", 3)
+	consensus.AddVoter(NewHTTPSource("https://icanhazip.com/"), 3)
+	consensus.AddVoter(NewHTTPSource("https://myexternalip.com/raw"), 3)
 
 	// Plain-text providers
-	consensus.AddHTTPVoter("http://ifconfig.io/ip", 1)
-	consensus.AddHTTPVoter("http://checkip.amazonaws.com/", 1)
-	consensus.AddHTTPVoter("http://ident.me/", 1)
-	consensus.AddHTTPVoter("http://whatismyip.akamai.com/", 1)
-	consensus.AddHTTPVoter("http://tnx.nl/ip", 1)
-	consensus.AddHTTPVoter("http://myip.dnsomatic.com/", 1)
-	consensus.AddHTTPVoter("http://ipecho.net/plain", 1)
-	consensus.AddHTTPVoter("http://diagnostic.opendns.com/myip", 1)
+	consensus.AddVoter(NewHTTPSource("http://ifconfig.io/ip"), 1)
+	consensus.AddVoter(NewHTTPSource("http://checkip.amazonaws.com/"), 1)
+	consensus.AddVoter(NewHTTPSource("http://ident.me/"), 1)
+	consensus.AddVoter(NewHTTPSource("http://whatismyip.akamai.com/"), 1)
+	consensus.AddVoter(NewHTTPSource("http://tnx.nl/ip"), 1)
+	consensus.AddVoter(NewHTTPSource("http://myip.dnsomatic.com/"), 1)
+	consensus.AddVoter(NewHTTPSource("http://ipecho.net/plain"), 1)
+	consensus.AddVoter(NewHTTPSource("http://diagnostic.opendns.com/myip"), 1)
 
 	return consensus
 }
@@ -46,7 +47,7 @@ func NewConsensus(cfg *ConsensusConfig) *Consensus {
 		cfg = DefaultConsensusConfig()
 	}
 	return &Consensus{
-		client: &http.Client{Timeout: cfg.Timeout},
+		timeout: cfg.Timeout,
 	}
 }
 
@@ -55,7 +56,7 @@ type ConsensusConfig struct {
 	Timeout time.Duration
 }
 
-// WithTimeout sets the timeout of this config,
+// WithTimeout sets the voting timeout of this config,
 // returning the config itself at the end, to allow for chaining
 func (cfg *ConsensusConfig) WithTimeout(timeout time.Duration) *ConsensusConfig {
 	cfg.Timeout = timeout
@@ -67,8 +68,8 @@ func (cfg *ConsensusConfig) WithTimeout(timeout time.Duration) *ConsensusConfig 
 // Its `ExternalIP` method allows you to ask for your ExternalIP,
 // influenced by all its added voters.
 type Consensus struct {
-	voters []voter
-	client *http.Client
+	voters  []voter
+	timeout time.Duration
 }
 
 // AddVoter adds a voter to this consensus.
@@ -89,52 +90,35 @@ func (c *Consensus) AddVoter(source Source, weight uint) error {
 	return nil
 }
 
-// AddHTTPVoter creates and adds an HTTP Voter to this consensus,
-// using the HTTP Client of this Consensus, configured by the ConsensusConfig.
-func (c *Consensus) AddHTTPVoter(url string, weight uint) error {
-	return c.AddVoter(NewHTTPSource(c.client, url), weight)
-}
-
-// AddComplexHTTPVoter creates an adds an HTTP Voter to this consensus,
-// using a given parser, and the HTTP Client of this Consensus,
-// configured by the ConsensusConfig
-func (c *Consensus) AddComplexHTTPVoter(url string, parser ContentParser, weight uint) error {
-	return c.AddVoter(
-		NewHTTPSource(c.client, url).WithParser(parser),
-		weight,
-	)
-}
-
 // ExternalIP requests asynchronously the externalIP from all added voters,
 // returning the IP which received the most votes.
 // The returned IP will always be valid, in case the returned error is <nil>.
 func (c *Consensus) ExternalIP() (net.IP, error) {
 	voteCollection := make(map[string]uint)
-	ch := make(chan vote, len(c.voters))
+	var vlock sync.Mutex
+	var wg sync.WaitGroup
 
 	// start all source Requests on a seperate goroutine
 	for _, v := range c.voters {
+		wg.Add(1)
 		go func(v voter) {
-			vote := vote{
-				Count: v.weight,
-				Error: InvalidIPError(""),
-			}
-			defer func() {
-				ch <- vote
-			}()
-			vote.IP, vote.Error = v.source.IP()
-			if vote.Error == nil && vote.IP == nil {
-				vote.Error = InvalidIPError("")
+			defer wg.Done()
+			ip, err := v.source.IP(c.timeout)
+			if err == nil && ip != nil {
+				vlock.Lock()
+				defer vlock.Unlock()
+				voteCollection[ip.String()] += v.weight
 			}
 		}(v)
 	}
 
-	// Wait for all votes to come in
-	for range c.voters {
-		vote := <-ch
-		if vote.Error == nil {
-			voteCollection[vote.IP.String()] += vote.Count
-		}
+	// wait for all votes to come in,
+	// or until the voting process times out
+	select {
+	case <-waitWG(&wg):
+		fmt.Println("done!") // TODO: Log instead
+	case <-time.After(c.timeout):
+		fmt.Println("timeout!") // TODO: Log instead
 	}
 
 	// if no votes were casted succesfully,
@@ -148,6 +132,8 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 
 	// find the IP which has received the most votes,
 	// influinced by the voter's weight.
+	vlock.Lock()
+	defer vlock.Unlock()
 	for ip, votes := range voteCollection {
 		if votes > max {
 			max, externalIP = votes, ip
@@ -157,4 +143,15 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	// as the found IP was parsed previously,
 	// we know it cannot be nil and is valid
 	return net.ParseIP(externalIP), nil
+}
+
+// waitWG, waits for a waiting group,
+// transformed into a channel to be composable.
+func waitWG(wg *sync.WaitGroup) chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+	return ch
 }
