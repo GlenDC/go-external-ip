@@ -81,9 +81,11 @@ type Consensus struct {
 // the weight has to be of a value of 1 or above.
 func (c *Consensus) AddVoter(source Source, weight uint) error {
 	if source == nil {
+		c.logger.Println("[ERROR] could not add voter: no source given")
 		return ErrNoSource
 	}
 	if weight == 0 {
+		c.logger.Println("[ERROR] could not add voter: weight cannot be 0")
 		return ErrInsufficientWeight
 	}
 
@@ -125,6 +127,7 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	// if no votes were casted succesfully,
 	// return early with an error
 	if len(voteCollection) == 0 {
+		c.logger.Println("[ERROR] no votes were casted succesfully")
 		return nil, ErrNoIP
 	}
 
