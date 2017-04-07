@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -11,8 +12,8 @@ import (
 
 // CLI Flags
 var (
-	timeout = flag.Duration("t", time.Second*2, "consensus's voting timeout")
-	verbose = flag.Bool("v", false, "verbose logging")
+	timeout = flag.Duration("t", time.Second*5, "consensus's voting timeout")
+	verbose = flag.Bool("v", false, "log errors to STDERR, when defined")
 )
 
 func main() {
@@ -22,11 +23,15 @@ func main() {
 		cfg.WithTimeout(*timeout)
 	}
 
-	// TODO: Add Logging (and use the verbose flag)
+	// optionally create the logger,
+	// if no logger is defined, all logs will be discarded.
+	var logger *log.Logger
+	if verbose != nil && *verbose {
+		logger = externalip.NewLogger(os.Stderr)
+	}
 
 	// create the consensus
-	consensus := externalip.DefaultConsensus(
-		externalip.DefaultConsensusConfig().WithTimeout(*timeout))
+	consensus := externalip.DefaultConsensus(cfg, logger)
 
 	// retrieve the external ip
 	ip, err := consensus.ExternalIP()

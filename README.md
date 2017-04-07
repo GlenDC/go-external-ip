@@ -2,6 +2,5 @@
 
 TODO:
 
-+ Decent Logging;
 + README Documentation;
 + Unit-Tests;

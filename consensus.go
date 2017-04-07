@@ -1,7 +1,7 @@
 package externalip
 
 import (
-	"fmt"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -20,8 +20,8 @@ func DefaultConsensusConfig() *ConsensusConfig {
 // with default and recommended HTTPSources.
 // TLS-Protected providers get more power,
 // compared to plain-text providers.
-func DefaultConsensus(cfg *ConsensusConfig) *Consensus {
-	consensus := NewConsensus(cfg)
+func DefaultConsensus(cfg *ConsensusConfig, logger *log.Logger) *Consensus {
+	consensus := NewConsensus(cfg, logger)
 
 	// TLS-protected providers
 	consensus.AddVoter(NewHTTPSource("https://icanhazip.com/"), 3)
@@ -34,7 +34,6 @@ func DefaultConsensus(cfg *ConsensusConfig) *Consensus {
 	consensus.AddVoter(NewHTTPSource("http://whatismyip.akamai.com/"), 1)
 	consensus.AddVoter(NewHTTPSource("http://tnx.nl/ip"), 1)
 	consensus.AddVoter(NewHTTPSource("http://myip.dnsomatic.com/"), 1)
-	consensus.AddVoter(NewHTTPSource("http://ipecho.net/plain"), 1)
 	consensus.AddVoter(NewHTTPSource("http://diagnostic.opendns.com/myip"), 1)
 
 	return consensus
@@ -42,12 +41,16 @@ func DefaultConsensus(cfg *ConsensusConfig) *Consensus {
 
 // NewConsensus creates a new Consensus, with no sources.
 // When the given cfg is <nil>, the `DefaultConsensusConfig` will be used.
-func NewConsensus(cfg *ConsensusConfig) *Consensus {
+func NewConsensus(cfg *ConsensusConfig, logger *log.Logger) *Consensus {
 	if cfg == nil {
 		cfg = DefaultConsensusConfig()
 	}
+	if logger == nil {
+		logger = NewLogger(nil)
+	}
 	return &Consensus{
 		timeout: cfg.Timeout,
+		logger:  logger,
 	}
 }
 
@@ -70,6 +73,7 @@ func (cfg *ConsensusConfig) WithTimeout(timeout time.Duration) *ConsensusConfig 
 type Consensus struct {
 	voters  []voter
 	timeout time.Duration
+	logger  *log.Logger
 }
 
 // AddVoter adds a voter to this consensus.
@@ -103,7 +107,7 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 		wg.Add(1)
 		go func(v voter) {
 			defer wg.Done()
-			ip, err := v.source.IP(c.timeout)
+			ip, err := v.source.IP(c.timeout, c.logger)
 			if err == nil && ip != nil {
 				vlock.Lock()
 				defer vlock.Unlock()
@@ -116,9 +120,6 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	// or until the voting process times out
 	select {
 	case <-waitWG(&wg):
-		fmt.Println("done!") // TODO: Log instead
-	case <-time.After(c.timeout):
-		fmt.Println("timeout!") // TODO: Log instead
 	}
 
 	// if no votes were casted succesfully,

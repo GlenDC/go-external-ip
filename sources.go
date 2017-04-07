@@ -2,6 +2,7 @@ package externalip
 
 import (
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -37,11 +38,12 @@ func (s *HTTPSource) WithParser(parser ContentParser) *HTTPSource {
 }
 
 // IP implements Source.IP
-func (s *HTTPSource) IP(timeout time.Duration) (net.IP, error) {
+func (s *HTTPSource) IP(timeout time.Duration, logger *log.Logger) (net.IP, error) {
 	// Define the GET method with the correct url,
 	// setting the User-Agent to our library
 	req, err := http.NewRequest("GET", s.url, nil)
 	if err != nil {
+		logger.Printf("[ERROR] could not create a GET Request for %q: %v\n", s.url, err)
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "go-external-ip (github.com/glendc/go-external-ip)")
@@ -50,12 +52,14 @@ func (s *HTTPSource) IP(timeout time.Duration) (net.IP, error) {
 	// Do the request and read the body for non-error results.
 	resp, err := client.Do(req)
 	if err != nil {
+		logger.Printf("[ERROR] could not GET %q: %v\n", s.url, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		logger.Printf("[ERROR] could not read response from %q: %v\n", s.url, err)
 		return nil, err
 	}
 
@@ -64,6 +68,7 @@ func (s *HTTPSource) IP(timeout time.Duration) (net.IP, error) {
 	if s.parser != nil {
 		raw, err = s.parser(raw)
 		if err != nil {
+			logger.Printf("[ERROR] could not parse response from %q: %v\n", s.url, err)
 			return nil, err
 		}
 	}
@@ -71,6 +76,7 @@ func (s *HTTPSource) IP(timeout time.Duration) (net.IP, error) {
 	// validate the IP
 	externalIP := net.ParseIP(strings.TrimSpace(raw))
 	if externalIP == nil {
+		logger.Printf("[ERROR] %q returned an invalid IP: %v\n", s.url, err)
 		return nil, InvalidIPError(raw)
 	}
 
