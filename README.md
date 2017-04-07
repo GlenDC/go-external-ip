@@ -5,7 +5,9 @@ A Golang library to get your external ip from multiple services.
 ## TODO
 
 + Unit-Tests + CI (Travis);
-+ Investigate support for (a) STUN protocol(s);
++ Design/Implement STUNSource, more info:
+    + [RFC 3489](https://tools.ietf.org/html/rfc3489);
+    + [RFC 5389](https://tools.ietf.org/html/rfc5389);
 
 ## Docs
 
