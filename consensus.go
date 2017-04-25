@@ -119,10 +119,8 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	}
 
 	// wait for all votes to come in,
-	// or until the voting process times out
-	select {
-	case <-waitWG(&wg):
-	}
+	// or until their process times out
+	wg.Wait()
 
 	// if no votes were casted succesfully,
 	// return early with an error
@@ -147,15 +145,4 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	// as the found IP was parsed previously,
 	// we know it cannot be nil and is valid
 	return net.ParseIP(externalIP), nil
-}
-
-// waitWG, waits for a waiting group,
-// transformed into a channel to be composable.
-func waitWG(wg *sync.WaitGroup) chan struct{} {
-	ch := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-	return ch
 }
