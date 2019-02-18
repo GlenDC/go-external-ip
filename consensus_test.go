@@ -6,7 +6,7 @@ import (
 )
 
 func TestDefaultConsensus(t *testing.T) {
-	consensus := DefaultConsensus(nil)
+	consensus := DefaultConsensus(nil, nil)
 	if consensus == nil {
 		t.Fatal("default consensus should never be nil")
 	}

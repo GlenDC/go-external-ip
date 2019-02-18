@@ -48,7 +48,13 @@ func (s *HTTPSource) IP(timeout time.Duration, logger *log.Logger) (net.IP, erro
 	}
 	req.Header.Set("User-Agent", "go-external-ip (github.com/glendc/go-external-ip)")
 
-	client := &http.Client{Timeout: timeout}
+	// transport to avoid goroutine leak
+	tr := &http.Transport{
+	MaxIdleConns:       1,
+	IdleConnTimeout:    3 * time.Second,
+	DisableKeepAlives:  true,
+	}
+	client := &http.Client{Timeout: timeout, Transport: tr}
 	// Do the request and read the body for non-error results.
 	resp, err := client.Do(req)
 	if err != nil {
