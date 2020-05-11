@@ -71,9 +71,10 @@ func (cfg *ConsensusConfig) WithTimeout(timeout time.Duration) *ConsensusConfig 
 // Its `ExternalIP` method allows you to ask for your ExternalIP,
 // influenced by all its added voters.
 type Consensus struct {
-	voters  []voter
-	timeout time.Duration
-	logger  *log.Logger
+	voters   []voter
+	timeout  time.Duration
+	logger   *log.Logger
+	protocol uint
 }
 
 // AddVoter adds a voter to this consensus.
@@ -109,7 +110,7 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 		wg.Add(1)
 		go func(v voter) {
 			defer wg.Done()
-			ip, err := v.source.IP(c.timeout, c.logger)
+			ip, err := v.source.IP(c.timeout, c.logger, c.protocol)
 			if err == nil && ip != nil {
 				vlock.Lock()
 				defer vlock.Unlock()
@@ -145,4 +146,17 @@ func (c *Consensus) ExternalIP() (net.IP, error) {
 	// as the found IP was parsed previously,
 	// we know it cannot be nil and is valid
 	return net.ParseIP(externalIP), nil
+}
+
+// UseIPProtocol will set the IP Protocol to use for http requests
+// to the sources. If zero, it will not discriminate. This is useful
+// when you want to get the external IP in a specific protocol.
+// Protocol only supports 0, 4 or 6.
+func (c *Consensus) UseIPProtocol(protocol uint) error {
+	if protocol != 0 && protocol != 4 && protocol != 6 {
+		c.logger.Println("[ERROR] only ipv4 and ipv6 protocol is supported")
+		return ErrInvalidProtocol
+	}
+	c.protocol = protocol
+	return nil
 }
