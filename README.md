@@ -1,10 +1,9 @@
-# Go External IP [![license](https://img.shields.io/github/license/glendc/go-external-ip.svg)](https://github.com/GlenDC/go-external-ip/blob/master/LICENSE.txt)
+# Go External IP [![Go Workflow Status](https://github.com/glendc/go-external-ip/workflows/Go/badge.svg)](https://github.com/glendc/go-external-ip/actions?query=workflow%Go)&nbsp;[![Coverage Status](https://coveralls.io/repos/github/glendc/go-external-ip/badge.svg?branch=main)](https://coveralls.io/github/glendc/go-external-ip?branch=main)&nbsp;[![GoDoc](https://godoc.org/github.com/glendc/go-external-ip?status.svg)](https://godoc.org/github.com/glendc/go-external-ip)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/glendc/go-external-ip)](https://goreportcard.com/report/github.com/glendc/go-external-ip)[![license](https://img.shields.io/github/license/glendc/go-external-ip.svg)](https://github.com/GlenDC/go-external-ip/blob/master/LICENSE.txt)
 
 A Golang library to get your external ip from multiple services.
 
 ## TODO
 
-+ Unit-Tests + CI (Travis);
 + Design/Implement STUNSource, more info:
     + [RFC 3489](https://tools.ietf.org/html/rfc3489);
     + [RFC 5389](https://tools.ietf.org/html/rfc5389);
