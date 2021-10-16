@@ -58,7 +58,6 @@ func (s *HTTPSource) IP(timeout time.Duration, logger *log.Logger, protocol uint
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
-			DualStack: false,
 			Control: func(network, address string, c syscall.RawConn) error {
 				if protocol == 4 && network == "tcp6" {
 					return errors.New("rejecting ipv6 connection")
