@@ -12,7 +12,7 @@ type Source interface {
 	// net.IP should never be <nil> when error is <nil>
 	// It is recommended that the IP function times out,
 	// if no result could be found, after the given timeout duration.
-	IP(timeout time.Duration, logger *log.Logger) (net.IP, error)
+	IP(timeout time.Duration, logger *log.Logger, protocol uint) (net.IP, error)
 }
 
 // voter adds weight to the IP given by a source.

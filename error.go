@@ -19,4 +19,6 @@ var (
 	// ErrNoSource is returned when a voter is added,
 	// which doesn't have a source specified
 	ErrNoSource = errors.New("no voter's source given")
+	// ErrInvalidProtocol is used when setting an invalid ip protocol on the conensus
+	ErrInvalidProtocol = errors.New("invalid ip protocol specified")
 )
