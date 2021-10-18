@@ -7,13 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/glendc/go-external-ip"
+	externalip "github.com/glendc/go-external-ip"
 )
 
 // CLI Flags
 var (
-	timeout = flag.Duration("t", time.Second*5, "consensus's voting timeout")
-	verbose = flag.Bool("v", false, "log errors to STDERR, when defined")
+	timeout  = flag.Duration("t", time.Second*5, "consensus's voting timeout")
+	verbose  = flag.Bool("v", false, "log errors to STDERR, when defined")
+	protocol = flag.Uint("p", 0, "IP Protocol to be used (0, 4, or 6)")
 )
 
 func main() {
@@ -32,18 +33,22 @@ func main() {
 
 	// create the consensus
 	consensus := externalip.DefaultConsensus(cfg, logger)
+	err := consensus.UseIPProtocol(*protocol)
+	errCheck(err)
 
 	// retrieve the external ip
 	ip, err := consensus.ExternalIP()
+	errCheck(err)
 
-	// simple error handling
+	// success, simply output the IP in string format
+	fmt.Println(ip.String())
+}
+
+func errCheck(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-
-	// success, simply output the IP in string format
-	fmt.Println(ip.String())
 }
 
 func init() {

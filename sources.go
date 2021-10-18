@@ -1,11 +1,13 @@
 package externalip
 
 import (
+	"errors"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -38,7 +40,7 @@ func (s *HTTPSource) WithParser(parser ContentParser) *HTTPSource {
 }
 
 // IP implements Source.IP
-func (s *HTTPSource) IP(timeout time.Duration, logger *log.Logger) (net.IP, error) {
+func (s *HTTPSource) IP(timeout time.Duration, logger *log.Logger, protocol uint) (net.IP, error) {
 	// Define the GET method with the correct url,
 	// setting the User-Agent to our library
 	req, err := http.NewRequest("GET", s.url, nil)
@@ -48,7 +50,28 @@ func (s *HTTPSource) IP(timeout time.Duration, logger *log.Logger) (net.IP, erro
 	}
 	req.Header.Set("User-Agent", "go-external-ip (github.com/glendc/go-external-ip)")
 
-	client := &http.Client{Timeout: timeout}
+	// transport to avoid goroutine leak
+	tr := &http.Transport{
+		MaxIdleConns:      1,
+		IdleConnTimeout:   3 * time.Second,
+		DisableKeepAlives: true,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: false,
+			Control: func(network, address string, c syscall.RawConn) error {
+				if protocol == 4 && network == "tcp6" {
+					return errors.New("rejecting ipv6 connection")
+				} else if protocol == 6 && network == "tcp4" {
+					return errors.New("rejecting ipv4 connection")
+				}
+				return nil
+			},
+		}).DialContext,
+	}
+
+	client := &http.Client{Timeout: timeout, Transport: tr}
+
 	// Do the request and read the body for non-error results.
 	resp, err := client.Do(req)
 	if err != nil {
