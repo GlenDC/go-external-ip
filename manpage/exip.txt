@@ -1,0 +1,33 @@
+NAME
+    exip - Retrieve your external IP
+
+SYNOPSIS
+    exip [OPTIONS]
+
+DESCRIPTION
+    This package is a Golang library to get your external ip from multiple services.
+    Design/Implement STUNSource (Session Traversal Utilities for NAT (STUN)) See RFC 3489
+    and RFC 5389 for more details.
+
+OPTIONS
+    -h help       show this usage message
+    -p uint       IP Protocol to be used (0, 4, or 6)
+    -t duration   consensus's voting timeout (default 5s)
+    -v            log errors to STDERR, when defined
+
+EXAMPLES
+    exip
+
+    exip -p 4
+
+    exip -p 6
+
+    exip -t 10
+
+    exip -v
+
+AUTHOR
+  Written by Glen De Cauwsemaecker
+
+  This manual page was written by Guilherme de Paula Xavier Segundo
+  <guilherme.lnx@gmail.com> for the Debian project (but may be used by others).
