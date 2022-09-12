@@ -21,7 +21,7 @@ package main
 
 import (
     "fmt"
-    "github.com/glendc/go-external-ip"
+    externalip "github.com/glendc/go-external-ip"
 )
 
 func main() {
