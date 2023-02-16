@@ -9,7 +9,7 @@ import (
 
 // DefaultConsensusConfig returns the ConsensusConfig,
 // with the default values:
-//    + Timeout: 30 seconds;
+//   - Timeout: 30 seconds;
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
 		Timeout: time.Second * 30,
