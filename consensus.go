@@ -33,7 +33,6 @@ func DefaultConsensus(cfg *ConsensusConfig, logger *log.Logger) *Consensus {
 	consensus.AddVoter(NewHTTPSource("http://ident.me/"), 1)
 	consensus.AddVoter(NewHTTPSource("http://whatismyip.akamai.com/"), 1)
 	consensus.AddVoter(NewHTTPSource("http://myip.dnsomatic.com/"), 1)
-	consensus.AddVoter(NewHTTPSource("http://diagnostic.opendns.com/myip"), 1)
 
 	return consensus
 }
